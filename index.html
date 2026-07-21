@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stardew Season Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>🌱 Stardew Season Planner</h1>
+  <p class="tagline">Tell it what you have — it tells you what to plant, what to build, and how to squeeze the most gold out of the season.</p>
+</header>
+
+<main>
+  <aside id="inputs">
+    <h2>Your Setup</h2>
+
+    <fieldset>
+      <legend>Season</legend>
+      <div class="row">
+        <label>Season
+          <select id="season">
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="fall">Fall</option>
+            <option value="winter">Winter</option>
+          </select>
+        </label>
+        <label>Planting day
+          <input type="number" id="startDay" min="1" max="28" value="1">
+        </label>
+      </div>
+      <div class="row">
+        <label>Gold budget
+          <input type="number" id="budget" min="0" value="2000" step="100">
+        </label>
+        <label>Tiles available
+          <input type="number" id="tiles" min="1" value="100">
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Skills</legend>
+      <div class="row">
+        <label>Farming level
+          <input type="number" id="farmingLevel" min="0" max="10" value="5">
+        </label>
+        <label>Fertilizer
+          <select id="fertilizer">
+            <option value="none">None</option>
+            <option value="basic">Basic</option>
+            <option value="quality">Quality</option>
+            <option value="deluxe">Deluxe</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Speed-Gro
+          <select id="speedGro">
+            <option value="none">None</option>
+            <option value="speedgro">Speed-Gro (10%)</option>
+            <option value="deluxe">Deluxe (25%)</option>
+            <option value="hyper">Hyper (33%)</option>
+          </select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="tiller" checked> Tiller (+10% crops)</label>
+        <label><input type="checkbox" id="artisan"> Artisan (+40% goods)</label>
+        <label><input type="checkbox" id="agriculturist"> Agriculturist (+10% speed)</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Equipment</legend>
+      <div class="row">
+        <label>Kegs <input type="number" id="kegs" min="0" value="0"></label>
+        <label>Preserves Jars <input type="number" id="jars" min="0" value="0"></label>
+      </div>
+      <div class="row">
+        <label>Dehydrators <input type="number" id="dehydrators" min="0" value="0"></label>
+        <label>Casks <input type="number" id="casks" min="0" value="0"></label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="greenhouse"> Greenhouse unlocked</label>
+        <label><input type="checkbox" id="island"> Ginger Island unlocked</label>
+        <label><input type="checkbox" id="desert"> Desert unlocked (Oasis shop)</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Goal</legend>
+      <label>What are you after next season?
+        <select id="goal">
+          <option value="max">Maximize profit</option>
+          <option value="target">Hit a gold target</option>
+        </select>
+      </label>
+      <label id="targetWrap" class="hidden">Target gold
+        <input type="number" id="targetGold" min="0" value="25000" step="1000">
+      </label>
+    </fieldset>
+
+    <button id="calc">Plan my season</button>
+  </aside>
+
+  <section id="results" class="hidden">
+    <div id="planCard" class="card"></div>
+    <div id="resourceCard" class="card"></div>
+    <div class="card">
+      <h2>All options ranked <span class="sub">(gold per tile per day, best of raw vs. processed)</span></h2>
+      <div class="table-wrap"><table id="rankTable"></table></div>
+    </div>
+    <div class="card">
+      <h2>Tips &amp; exploits for this setup</h2>
+      <div id="tips"></div>
+    </div>
+    <p class="fineprint">Assumptions: quality bonus applies to raw sales only (machines always output normal quality — sell your gold/iridium raw, process the rest). Single-harvest replants are funded from harvest revenue; only the first planting must fit your budget. Growth times approximate the game's speed-modifier stacking. Prices from your 1.6 guide sheet.</p>
+  </section>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
