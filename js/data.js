@@ -166,8 +166,8 @@ export const CROPS = [
     seed: 0, sell: 70, growth: 8, regrow: 4, yield: 1, seedLimited: true,
     seedNote: 'Seeds from Raccoon trades (not sold)' },
   { id: 'gem_berry', name: 'Sweet Gem Berry', seasons: ['fall'], type: 'other',
-    seed: 1000, sell: 3000, growth: 24, regrow: null, yield: 1,
-    seedNote: 'Rare Seed — Traveling Cart (600-1,000g, buy every visit!). Cannot be processed.' },
+    seed: 1000, sell: 3000, growth: 24, regrow: null, yield: 1, seedLimited: true,
+    seedNote: 'Rare Seed — Traveling Cart only (Fri/Sun, usually 1 per visit), so you can\'t fill a field. Plant the handful you\'ve collected as a bonus. Cannot be processed.' },
 
   // ---------------- WINTER ----------------
   { id: 'powdermelon', name: 'Powdermelon', seasons: ['winter'], type: 'fruit',
@@ -198,7 +198,7 @@ export const TIPS = [
   {
     title: 'Rare Seed → Sweet Gem Berry (3,000g)',
     when: c => c.season === 'fall' || c.season === 'summer',
-    body: 'The Traveling Cart (Fri/Sun, Cindersap Forest) sells Rare Seeds for 600-1,000g. Plant by Fall 4 (24-day growth). Each berry sells for 3,000g base — and giving one to Old Master Cannoli earns a Stardrop.',
+    body: 'The Traveling Cart (Fri/Sun, Cindersap Forest) sells Rare Seeds for 600-1,000g — but usually just one per visit, and its stock rotates, so treat them as a side bet, not a field crop: buy one whenever you see one and stockpile. Plant by Fall 4 (24-day growth). Each berry sells for 3,000g base — and giving one to Old Master Cannoli earns a Stardrop.',
   },
   {
     title: 'Ancient Fruit seed-maker loop',

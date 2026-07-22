@@ -299,7 +299,7 @@ function renderTable(ranked, ctx) {
       : '—';
     return `<tr>
       <td>${idx + 1}</td>
-      <td><strong>${c.name}</strong>${c.trellis ? ' 🪜' : ''}${c.where === 'island' ? ' 🏝️' : ''}${c.seedLimited ? ' <span class="note" title="Seeds cannot be bought — excluded from the auto-plan">🔒</span>' : ''}</td>
+      <td><strong>${c.name}</strong>${c.trellis ? ' 🪜' : ''}${c.where === 'island' ? ' 🏝️' : ''}${c.seedLimited ? ' <span class="note" title="Seeds can’t be bought in bulk — excluded from the auto-plan">🔒</span>' : ''}</td>
       <td class="num">${gold(c.seed)}</td>
       <td class="num">${r.growth}d${c.regrow ? ` +${c.regrow}d` : ''}</td>
       <td class="num">${r.harvests}</td>
