@@ -84,6 +84,11 @@
         <label>Dehydrators <input type="number" id="dehydrators" min="0" value="0"></label>
         <label>Casks <input type="number" id="casks" min="0" value="0"></label>
       </div>
+      <div class="row">
+        <label title="Waters 4 tiles">Sprinklers <input type="number" id="sprBasic" min="0" value="0"></label>
+        <label title="Waters 8 tiles">Quality Spr. <input type="number" id="sprQuality" min="0" value="0"></label>
+        <label title="Waters 24 tiles">Iridium Spr. <input type="number" id="sprIridium" min="0" value="0"></label>
+      </div>
       <div class="checks">
         <label><input type="checkbox" id="greenhouse"> Greenhouse unlocked</label>
         <label><input type="checkbox" id="island"> Ginger Island unlocked</label>
@@ -110,6 +115,7 @@
   <section id="results" class="hidden">
     <div id="planCard" class="card"></div>
     <div id="resourceCard" class="card"></div>
+    <div id="upgradeCard" class="card"></div>
     <div class="card">
       <h2>All options ranked <span class="sub">(gold per tile per day, best of raw vs. processed)</span></h2>
       <div class="table-wrap"><table id="rankTable"></table></div>

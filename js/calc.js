@@ -116,22 +116,26 @@ export function evaluateCrop(crop, ctx) {
   // Best processing route per item. The "processed/tile" figure assumes
   // unlimited machines (a what-if); actual machine capacity is applied
   // when building the plan.
-  const routes = processingRoutes(crop, ctx);
-  let best = null;
-  for (const r of routes) {
-    if (!best || r.valuePerItem > best.valuePerItem) best = r;
-  }
+  // All routes, best value first; ties break toward the faster machine
+  // cycle (blueberry jelly = wine at 210g, but a jar turn is 3 days
+  // vs the keg's 7 — jars win).
+  const routes = processingRoutes(crop, ctx)
+    .sort((a, b) => b.valuePerItem - a.valuePerItem || a.machineDays - b.machineDays);
+  const best = routes[0] || null;
   const machineOwned = { keg: ctx.equipment.kegs, jar: ctx.equipment.jars, dehydrator: ctx.equipment.dehydrators };
+  // Routes the player can run TODAY (owns the machine, beats raw), best
+  // first. The plan fills these in order and sells the overflow raw.
+  const ownedRoutes = routes.filter(r => machineOwned[r.route] > 0 && r.valuePerItem > rawPerItem);
   const processedProfit = best ? itemsPerTile * best.valuePerItem - seedCostPerTile : null;
-  // Only rank on processed value if the player owns at least one machine
-  // of that type AND it beats selling raw.
-  const useProcessing = !!(best && machineOwned[best.route] > 0 && best.valuePerItem > rawPerItem);
+  const useProcessing = ownedRoutes.length > 0;
 
   const daysUsed = DAYS_PER_SEASON - ctx.startDay + 1;
-  const profit = useProcessing ? processedProfit : rawProfit;
+  const profit = useProcessing
+    ? itemsPerTile * ownedRoutes[0].valuePerItem - seedCostPerTile
+    : rawProfit;
 
   return {
-    crop, harvests, plantings, growth,
+    crop, harvests, plantings, growth, ownedRoutes,
     itemsPerTile: round2(itemsPerTile),
     seedCostPerTile,
     rawPerItem,
@@ -149,6 +153,7 @@ export function candidates(ctx) {
   return CROPS.filter(c => {
     if (c.where === 'island' && !ctx.equipment.island) return false;
     if (c.where === 'greenhouse' && !ctx.equipment.greenhouse) return false;
+    if (c.shop === 'oasis' && !ctx.equipment.desert) return false;
     const inSeason = c.seasons.includes(ctx.season);
     const greenhouseOk = ctx.equipment.greenhouse && (c.where === 'greenhouse' || c.where === 'greenhouse-or-farm' || c.seasons.length > 0);
     if (ctx.location === 'greenhouse') return greenhouseOk;
@@ -161,6 +166,34 @@ export function rankCrops(ctx) {
     .map(c => evaluateCrop(c, ctx))
     .filter(Boolean)
     .sort((a, b) => b.goldPerTileDay - a.goldPerTileDay);
+}
+
+// --- Machine-pool allocation --------------------------------
+// Profit if we plant `n` tiles of `r`, given what's left of a
+// machine-day pool (not mutated). Items flow into the best owned
+// route until its pool runs dry, then the next owned route, then
+// sell raw — so 25 jars still matter when you own 0 kegs.
+function allocWithPool(r, n, machinePool) {
+  const items = n * r.itemsPerTile;
+  let remaining = items, revenue = 0;
+  const used = [];
+  for (const route of r.ownedRoutes) {
+    if (remaining <= 0) break;
+    const perItem = route.machineDays / route.inputs;
+    const can = perItem > 0
+      ? Math.min(remaining, Math.floor(machinePool[route.route] / perItem))
+      : remaining;
+    if (can <= 0) continue;
+    revenue += can * route.valuePerItem;
+    used.push({ r: route, items: can });
+    remaining -= can;
+  }
+  revenue += remaining * r.rawPerItem;
+  return {
+    items, used,
+    processedItems: items - remaining,
+    profit: revenue - n * r.seedCostPerTile,
+  };
 }
 
 // --- Build the recommended plan under budget/tile limits ----
@@ -181,20 +214,7 @@ export function buildPlan(ranked, ctx) {
     dehydrator: ctx.equipment.dehydrators * daysLeft,
   };
 
-  // Profit if we plant `n` tiles of `r` right now, given what's left
-  // of the machine pool (does not mutate the pool).
-  const tryAlloc = (r, n) => {
-    const items = n * r.itemsPerTile;
-    let processedItems = 0;
-    if (r.recommendProcessing && r.bestRoute) {
-      const perItem = r.bestRoute.machineDays / r.bestRoute.inputs;
-      processedItems = Math.min(items, Math.floor(machinePool[r.bestRoute.route] / perItem));
-    }
-    const profit = (r.recommendProcessing && r.bestRoute)
-      ? processedItems * r.bestRoute.valuePerItem + (items - processedItems) * r.rawPerItem - n * r.seedCostPerTile
-      : items * r.rawPerItem - n * r.seedCostPerTile;
-    return { items, processedItems, profit };
-  };
+  const tryAlloc = (r, n) => allocWithPool(r, n, machinePool);
 
   // Greedy on ACHIEVABLE profit: each round, pick the crop that earns
   // the most total gold given remaining tiles, budget, and machines
@@ -214,8 +234,8 @@ export function buildPlan(ranked, ctx) {
     if (!best) break;
 
     const { r, n, attempt } = best;
-    if (r.recommendProcessing && r.bestRoute) {
-      machinePool[r.bestRoute.route] -= attempt.processedItems * (r.bestRoute.machineDays / r.bestRoute.inputs);
+    for (const u of attempt.used) {
+      machinePool[u.r.route] -= u.items * (u.r.machineDays / u.r.inputs);
     }
     const alloc = {
       result: r, tiles: n,
@@ -223,6 +243,7 @@ export function buildPlan(ranked, ctx) {
       totalSeeds: n * r.plantings,
       profit: Math.round(attempt.profit),
       items: Math.round(attempt.items),
+      used: attempt.used,
       processedItems: Math.round(attempt.processedItems),
       rawItems: Math.round(attempt.items - attempt.processedItems),
     };
@@ -233,7 +254,81 @@ export function buildPlan(ranked, ctx) {
     tiles -= n;
     budget -= alloc.seedCost;
   }
+  plan.machinePoolLeft = machinePool;
   return plan;
+}
+
+// --- Mid-season replanting ----------------------------------
+// The first planting is often budget-bound, leaving tiles idle. As
+// harvests sell and machines finish, cash frees up — this walks the
+// season's estimated income timeline and plants follow-up waves on
+// the idle tiles whenever one is affordable AND can still finish
+// before the season ends. Cash timing: raw items pay on harvest day,
+// processed items pay when the machine finishes, and single-harvest
+// replant seeds are paid out of that day's take.
+export function planFollowUps(plan, ctx) {
+  const tilesFree = ctx.tiles - plan.tilesUsed;
+  const out = { waves: [], extraProfit: 0, tilesFree };
+  if (!plan.allocations.length || tilesFree <= 0) return out;
+
+  const events = [];
+  for (const a of plan.allocations) {
+    const r = a.result;
+    const H = r.harvests;
+    for (let h = 0; h < H; h++) {
+      const day = ctx.startDay + r.growth + h * (r.crop.regrow || r.growth);
+      if (day > DAYS_PER_SEASON) break;
+      if (a.rawItems > 0) events.push({ day, cash: (a.rawItems / H) * r.rawPerItem });
+      for (const u of a.used || []) {
+        events.push({ day: Math.ceil(day + u.r.machineDays), cash: (u.items / H) * u.r.valuePerItem });
+      }
+      if (!r.crop.regrow && !r.crop.seedOnce && h < H - 1) {
+        events.push({ day, cash: -a.tiles * r.crop.seed });
+      }
+    }
+  }
+  events.sort((x, y) => x.day - y.day);
+
+  let cash = ctx.budget - plan.totalSeedCost;
+  let free = tilesFree;
+  const pool = { ...plan.machinePoolLeft };
+  for (const e of events) {
+    cash += e.cash;
+    if (free <= 0 || out.waves.length >= 3) break;
+    const day = e.day + 1; // plant the next morning
+    if (day >= DAYS_PER_SEASON) break;
+    const subCtx = { ...ctx, startDay: day };
+    let best = null;
+    for (const r of rankCrops(subCtx)) {
+      if (r.crop.seedLimited) continue;
+      const affordable = r.crop.seed > 0 ? Math.floor(cash / r.crop.seed) : free;
+      const n = Math.min(free, affordable);
+      if (n <= 0) continue;
+      const attempt = allocWithPool(r, n, pool);
+      if (attempt.profit <= 0) continue;
+      if (!best || attempt.profit > best.attempt.profit) best = { r, n, attempt };
+    }
+    if (!best) continue;
+    const { r, n, attempt } = best;
+    for (const u of attempt.used) {
+      pool[u.r.route] -= u.items * (u.r.machineDays / u.r.inputs);
+    }
+    out.waves.push({
+      day, result: r, tiles: n,
+      cashBefore: Math.round(cash),
+      seedCost: n * r.crop.seed,
+      profit: Math.round(attempt.profit),
+      items: Math.round(attempt.items),
+      used: attempt.used,
+      processedItems: Math.round(attempt.processedItems),
+      rawItems: Math.round(attempt.items - attempt.processedItems),
+      totalSeeds: n * r.plantings,
+    });
+    out.extraProfit += Math.round(attempt.profit);
+    cash -= n * r.crop.seed;
+    free -= n;
+  }
+  return out;
 }
 
 // --- Machine requirements for the plan ----------------------
@@ -251,6 +346,91 @@ export function machineNeeds(plan, ctx) {
     needs[route.route] += Math.ceil(totalRuns / runsPerMachine);
   }
   return needs;
+}
+
+// --- Upgrade advisor -----------------------------------------
+// "What should I build?" Re-plans the season as if kegs/jars/
+// dehydrators were unlimited, then reports how many of each you'd
+// have to ADD to actually capture that harvest, the season-profit
+// gain, and a cask plan for the ageable keg output.
+export const CASK_AGING = { Wine: 56, Beer: 28, 'Pale Ale': 34 }; // days to iridium (2x value)
+export const CELLAR_CAPACITY = 125; // casks that fit in the cellar with walk space
+
+export function upgradeAdvisor(ctx, currentPlan) {
+  const daysLeft = DAYS_PER_SEASON - ctx.startDay + 1;
+  const uncapped = { ...ctx, equipment: { ...ctx.equipment, kegs: 1e9, jars: 1e9, dehydrators: 1e9 } };
+  const idealPlan = buildPlan(rankCrops(uncapped), uncapped);
+  if (!idealPlan.allocations.length) return null;
+
+  const needs = machineNeeds(idealPlan, uncapped);
+  const owned = { keg: ctx.equipment.kegs, jar: ctx.equipment.jars, dehydrator: ctx.equipment.dehydrators };
+
+  // Per-machine rows: how many to add, and what ONE extra machine of
+  // that type earns over the season (full-throughput margin of the
+  // best crop flowing through that route).
+  const machines = [];
+  for (const route of ['keg', 'jar', 'dehydrator']) {
+    const need = needs[route];
+    const add = Math.max(0, need - owned[route]);
+    let gainPerMachine = 0, product = null;
+    for (const a of idealPlan.allocations) {
+      for (const u of a.used) {
+        if (u.r.route !== route) continue;
+        const runs = Math.max(1, Math.floor(daysLeft / Math.max(u.r.machineDays, 0.1)));
+        const g = runs * u.r.inputs * (u.r.valuePerItem - a.result.rawPerItem);
+        if (g > gainPerMachine) { gainPerMachine = g; product = u.r.product; }
+      }
+    }
+    machines.push({ route, need, owned: owned[route], add, gainPerMachine: Math.round(gainPerMachine), product });
+  }
+
+  // Season-profit delta if everything recommended gets built.
+  const upgraded = { ...ctx, equipment: { ...ctx.equipment,
+    kegs: Math.max(owned.keg, needs.keg),
+    jars: Math.max(owned.jar, needs.jar),
+    dehydrators: Math.max(owned.dehydrator, needs.dehydrator) } };
+  const upgradedPlan = buildPlan(rankCrops(upgraded), upgraded);
+  const gain = Math.max(0, upgradedPlan.totalProfit - currentPlan.totalProfit);
+
+  // Casks: iridium-aging doubles wine/beer/pale ale, so each aged
+  // bottle adds its full (artisan-adjusted) value. Fill the cellar
+  // with the most valuable bottles first.
+  const ageable = [];
+  for (const a of upgradedPlan.allocations) {
+    for (const u of a.used) {
+      if (u.r.route !== 'keg') continue;
+      const agingDays = CASK_AGING[u.r.product];
+      if (!agingDays) continue;
+      const bottles = Math.floor(u.items / u.r.inputs);
+      if (bottles > 0) {
+        ageable.push({ product: u.r.product, bottles,
+          bottleValue: u.r.valuePerItem * u.r.inputs, agingDays });
+      }
+    }
+  }
+  ageable.sort((x, y) => y.bottleValue - x.bottleValue);
+  let capacity = CELLAR_CAPACITY;
+  const aged = [];
+  let caskBottles = 0, caskGain = 0;
+  for (const b of ageable) {
+    const n = Math.min(b.bottles, capacity);
+    if (n <= 0) break;
+    capacity -= n; caskBottles += n; caskGain += n * b.bottleValue;
+    aged.push({ ...b, bottles: n });
+  }
+  const cask = {
+    bottles: caskBottles,
+    add: Math.max(0, caskBottles - ctx.equipment.casks),
+    owned: ctx.equipment.casks,
+    gain: Math.round(caskGain),
+    aged,
+  };
+
+  const cropsChanged =
+    upgradedPlan.allocations.map(a => a.result.crop.id).join() !==
+    currentPlan.allocations.map(a => a.result.crop.id).join();
+
+  return { machines, gain, cask, upgradedPlan, cropsChanged };
 }
 
 export function sprinklerNeeds(tilesUsed) {

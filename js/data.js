@@ -65,7 +65,7 @@ export const CROPS = [
     seed: 100, sell: 120, growth: 8, regrow: 4, yield: 1.02, dry: true,
     seedNote: 'Egg Festival (Spring 13) only — stock up for next year!' },
   { id: 'rhubarb', name: 'Rhubarb', seasons: ['spring'], type: 'fruit',
-    seed: 100, sell: 220, growth: 13, regrow: null, yield: 1, dry: true,
+    seed: 100, sell: 220, growth: 13, regrow: null, yield: 1, dry: true, shop: 'oasis',
     seedNote: 'Sold at the Oasis (Desert)' },
   { id: 'cauliflower', name: 'Cauliflower', seasons: ['spring'], type: 'veg',
     seed: 80, sell: 175, growth: 12, regrow: null, yield: 1, giant: true },
@@ -96,7 +96,7 @@ export const CROPS = [
 
   // ---------------- SUMMER ----------------
   { id: 'starfruit', name: 'Starfruit', seasons: ['summer'], type: 'fruit',
-    seed: 400, sell: 750, growth: 13, regrow: null, yield: 1, dry: true,
+    seed: 400, sell: 750, growth: 13, regrow: null, yield: 1, dry: true, shop: 'oasis',
     seedNote: 'Sold at the Oasis (Desert)' },
   { id: 'blueberry', name: 'Blueberry', seasons: ['summer'], type: 'fruit',
     seed: 80, sell: 50, growth: 13, regrow: 4, yield: 3.02, dry: true },
@@ -146,7 +146,7 @@ export const CROPS = [
     seed: 30, sell: 160, growth: 8, regrow: null, yield: 1,
     seedNote: 'Pierre year 2+' },
   { id: 'beet', name: 'Beet', seasons: ['fall'], type: 'veg',
-    seed: 20, sell: 100, growth: 6, regrow: null, yield: 1,
+    seed: 20, sell: 100, growth: 6, regrow: null, yield: 1, shop: 'oasis',
     seedNote: 'Sold at the Oasis (Desert); 1 beet -> 3 sugar in the Mill' },
   { id: 'yam', name: 'Yam', seasons: ['fall'], type: 'veg',
     seed: 60, sell: 160, growth: 10, regrow: null, yield: 1 },
