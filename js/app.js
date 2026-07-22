@@ -105,6 +105,7 @@ function renderPlan(plan, ranked, ctx, followUps) {
       Profit ≈ <strong>${gold(a.profit)}</strong> (${gold(r.goldPerTileDay)}/tile/day)
       ${c.seedNote ? `<div class="note">📌 ${c.seedNote}</div>` : ''}
       ${c.trellis ? `<div class="note">⚠️ Trellis crop — you can't walk through it; leave access rows.</div>` : ''}
+      ${r.speedGroWasted ? `<div class="note">💸 Skip the Speed-Gro here — it doesn't add a ${c.name} harvest at this planting day (${r.harvests} either way), so it's pure cost.</div>` : ''}
     </div>`;
   }
 
@@ -119,6 +120,7 @@ function renderPlan(plan, ranked, ctx, followUps) {
           ${r.harvests} harvest${r.harvests > 1 ? 's' : ''}, ~${w.items.toLocaleString()} items.
           Best move: ${routeSummary(w, r)}.
           Extra profit ≈ <strong>${gold(w.profit)}</strong>
+          ${r.speedGroWasted ? `<div class="note">💸 Skip the Speed-Gro on this wave — no extra harvest from it at a day-${w.day} planting.</div>` : ''}
         </div>`;
       }
       html += `<p class="note">Income timing: raw sales pay on harvest day, kegs/jars pay when the batch finishes.

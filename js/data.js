@@ -191,6 +191,11 @@ export const CROPS = [
 // when(ctx) receives the full input state and returns true if relevant.
 export const TIPS = [
   {
+    title: 'One fertilizer per tile',
+    when: c => c.fertilizer !== 'none' && c.speedGro !== 'none',
+    body: 'A tile holds ONE soil treatment — quality fertilizer OR Speed-Gro, never both. You have both selected, so treat the numbers above as a best case and decide per crop: Speed-Gro only pays when it adds a harvest (the plan flags where it doesn\'t), otherwise take the quality fertilizer.',
+  },
+  {
     title: 'Egg Festival strawberry rush',
     when: c => c.season === 'spring',
     body: 'Strawberry seeds are ONLY sold at the Egg Festival (Spring 13). Planted Spring 14 you get 2 harvests; with Speed-Gro or Agriculturist you squeeze out a 3rd. Even better: buy hundreds and hold them until Spring 1 next year for 5 harvests each.',

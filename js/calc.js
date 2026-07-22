@@ -105,6 +105,12 @@ export function evaluateCrop(crop, ctx) {
   const { harvests, plantings, growth } = harvestCount(crop, ctx);
   if (harvests === 0) return null;
 
+  // Does the selected Speed-Gro actually buy an extra harvest for THIS
+  // crop at THIS planting day? Faster growth that doesn't change the
+  // harvest count is money down the drain.
+  const speedGroWasted = ctx.speedGro !== 'none'
+    && harvests <= harvestCount(crop, { ...ctx, speedGro: 'none' }).harvests;
+
   const itemsPerTile = harvests * crop.yield;
   const seedCostPerTile = plantings * crop.seed;
   const tillerMult = ctx.tiller && crop.type !== 'other' ? 1.1 : 1;
@@ -135,7 +141,7 @@ export function evaluateCrop(crop, ctx) {
     : rawProfit;
 
   return {
-    crop, harvests, plantings, growth, ownedRoutes,
+    crop, harvests, plantings, growth, ownedRoutes, speedGroWasted,
     itemsPerTile: round2(itemsPerTile),
     seedCostPerTile,
     rawPerItem,
