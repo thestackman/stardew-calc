@@ -23,9 +23,16 @@ fi
 is_free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 while ! is_free "$PORT"; do PORT=$((PORT + 1)); done
 
-# Prefer python3; fall back to npx http-server.
-if command -v python3 >/dev/null 2>&1; then
-  (cd "$REPO_ROOT" && nohup python3 -m http.server "$PORT" >/tmp/stardew-dev-server.log 2>&1 &
+# Prefer a real Python; fall back to npx http-server. On Windows, python3/python
+# may be Microsoft Store stubs that exist on PATH but don't run — so verify each
+# candidate actually executes instead of trusting command -v.
+PYTHON=""
+for cmd in python3 python py; do
+  if "$cmd" -c 'import sys' >/dev/null 2>&1; then PYTHON="$cmd"; break; fi
+done
+
+if [[ -n "$PYTHON" ]]; then
+  (cd "$REPO_ROOT" && nohup "$PYTHON" -m http.server "$PORT" >/tmp/stardew-dev-server.log 2>&1 &
    echo "$! $PORT" > "$PIDFILE")
 elif command -v npx >/dev/null 2>&1; then
   (cd "$REPO_ROOT" && nohup npx --yes http-server -p "$PORT" -s >/tmp/stardew-dev-server.log 2>&1 &
